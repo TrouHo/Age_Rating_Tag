@@ -47,25 +47,15 @@ def preprocess_and_split_metadata(
     random_state: int = 42,
 ):
     """
-    - Bỏ class C
     - Encode genres (multi-hot)
     - One-hot titleType
     - Tách X, y
     - Train/val/test split (stratified)
     - Tính sample_weight_train dựa trên tần suất label ở train
-
-    Trả về:
-        X_train, X_val, X_test,
-        y_train, y_val, y_test,
-        le (LabelEncoder), sample_weight_train
     """
     df = df.copy()
 
-    # 1. Bỏ class C nếu có
-    if "C" in df[label_col].unique():
-        df = df[df[label_col] != "C"].copy()
-
-    # 2. Encode genres (multi-hot)
+    # 1. Encode genres (multi-hot)
     if "genres" not in df.columns:
         raise ValueError("Cột 'genres' không tồn tại trong dataframe.")
 
@@ -73,29 +63,27 @@ def preprocess_and_split_metadata(
     genres_dummies = genres_clean.str.get_dummies(sep=",")
     df = pd.concat([df.drop(columns=["genres"]), genres_dummies], axis=1)
 
-    # 3. One-hot titleType (nếu cột tồn tại)
+    # 2. One-hot titleType (nếu cột tồn tại)
     if "titleType" in df.columns:
         title_dummies = pd.get_dummies(df["titleType"], prefix="titleType")
         df = pd.concat([df.drop(columns=["titleType"]), title_dummies], axis=1)
 
-    # 4. Chuẩn bị X, y
+    # 3. Chuẩn bị X, y
     if label_col not in df.columns:
         raise ValueError(f"Cột label '{label_col}' không tồn tại trong dataframe.")
-
     if id_col not in df.columns:
         raise ValueError(f"Cột id '{id_col}' không tồn tại trong dataframe.")
 
     y_str = df[label_col].copy()
     X = df.drop(columns=[label_col, id_col])
 
-    # Encode label string -> int
     le = LabelEncoder()
     y = le.fit_transform(y_str)
     num_classes = len(le.classes_)
     if num_classes < 2:
         raise ValueError("Số lượng lớp < 2, kiểm tra lại cột final_certificate.")
 
-    # 5. Train / Val / Test split
+    # 4. Train / Val / Test split
     X_train, X_temp, y_train, y_temp = train_test_split(
         X, y, test_size=test_size, random_state=random_state, stratify=y
     )
@@ -110,7 +98,7 @@ def preprocess_and_split_metadata(
         stratify=y_temp,
     )
 
-    # 6. Class weights & sample_weight cho train
+    # 5. Class weights & sample_weight cho train
     label_counts = pd.Series(y_train).value_counts()
     max_count = label_counts.max()
     class_weights = {cls: max_count / cnt for cls, cnt in label_counts.items()}
@@ -129,8 +117,7 @@ def preprocess_and_split_metadata(
 
 
 if __name__ == "__main__":
-    # Ví dụ chạy thử khi gọi trực tiếp dataset.py
-    data_path = Path("data") / "metadata_21k_mapped_clean.csv"
+    data_path = Path("data") / "metadata_input.csv"
     df_meta = load_metadata_dataframe(data_path)
 
     (
@@ -148,6 +135,3 @@ if __name__ == "__main__":
     print("Val shape  :", X_val.shape)
     print("Test shape :", X_test.shape)
     print("Classes    :", list(le.classes_))
-
-
-
