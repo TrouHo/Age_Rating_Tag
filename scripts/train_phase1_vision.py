@@ -4,10 +4,11 @@ from pathlib import Path
 import torch
 import torch.distributed as dist
 from torch.nn.parallel import DistributedDataParallel as DDP
-from torch.utils.data import DataLoader, random_split
+from torch.utils.data import DataLoader, Subset
 from torch.utils.data.distributed import DistributedSampler
 from transformers import VideoMAEImageProcessor
 import wandb
+import random
 
 
 # Add project root to Python path
@@ -68,12 +69,50 @@ def main():
         task_num_classes[task_name] = full_ds.get_num_classes()
         task_order.append(task_name)
 
-        # Split Dataset (80/20)
-        train_size = int(0.8 * len(full_ds))
-        val_size = len(full_ds) - train_size
-        train_ds, val_ds = random_split(
-            full_ds, [train_size, val_size], generator=torch.Generator().manual_seed(42)
-        )
+        # Split Dataset (80/20) with Grouping by Video ID to prevent leakage
+        video_to_indices = {}
+        # Build mapping from video name to list of sample indices
+        for idx, (file_path, label) in enumerate(full_ds.samples):
+            file_name = Path(file_path).stem  # e.g. "video_name_01"
+            # Assuming format <vid_name>_<clip_number>
+            if "_" in file_name:
+                video_name = file_name.rsplit("_", 1)[0]
+            else:
+                video_name = file_name
+
+            if video_name not in video_to_indices:
+                video_to_indices[video_name] = []
+            video_to_indices[video_name].append(idx)
+
+        video_names = list(video_to_indices.keys())
+        random.Random(42).shuffle(video_names)
+
+        train_videos = []
+        val_videos = []
+        train_indices = []
+        val_indices = []
+
+        target_val_clips = int(0.2 * len(full_ds))
+        current_val_clips = 0
+
+        for v in video_names:
+            indices = video_to_indices[v]
+            # Greedy fill for validation to approximate 20% clip split
+            if current_val_clips < target_val_clips:
+                val_videos.append(v)
+                val_indices.extend(indices)
+                current_val_clips += len(indices)
+            else:
+                train_videos.append(v)
+                train_indices.extend(indices)
+
+        train_ds = Subset(full_ds, train_indices)
+        val_ds = Subset(full_ds, val_indices)
+
+        if local_rank == 0:
+            print(
+                f"Task {task_name}: {len(train_videos)} train videos ({len(train_indices)} clips), {len(val_videos)} val videos ({len(val_indices)} clips)."
+            )
 
         # Create DistributedSamplers
         train_sampler = DistributedSampler(train_ds, shuffle=True)
