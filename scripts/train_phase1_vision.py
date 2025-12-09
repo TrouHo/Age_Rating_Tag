@@ -42,7 +42,7 @@ def main():
     TASK_CONFIG = {
         "violence": "/kaggle/input/violence-clips-extracted/extracted_violence",
         "crime": "/kaggle/input/ucf-crime-extracted/extracted_clips",
-        # "nudity": "/path/to/nudity/dataset",
+        "nudity": "/path/to/nudity/dataset",
     }
 
     # Training Settings

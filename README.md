@@ -33,9 +33,9 @@ Kết hợp kết quả từ hai nhánh để đưa ra phân loại cuối cùng
 
 **Input:** các clip ngắn đã được cắt từ dataset:
 
-- Violence
-- Nudity
-- Crime
+- Violence: https://www.kaggle.com/datasets/frostedpilot/violence-clips-extracted
+- Nudity: https://www.kaggle.com/datasets/trouho/porn-dataset
+- Crime: https://www.kaggle.com/datasets/frostedpilot/ucf-crime-extracted
 
 **Model:**
 
@@ -110,25 +110,6 @@ Toàn bộ logic liên quan đến video.
 
 - Load VideoMAE pretrained
 - Chuẩn hoá input và xử lý tensor
-
-**heads.py**
-Các classification head:
-
-- Violence
-- Nudity
-- Crime
-- Age Rating head (phase 2)
-
-**losses.py / metrics.py**
-
-- Các hàm Loss và Metric dùng trong train/val
-
-**train_utils.py**
-
-- Vòng lặp train chung
-- Logging
-- Lưu checkpoint
-
 ---
 
 ### 🔹 src/metadata/
