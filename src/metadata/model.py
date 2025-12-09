@@ -46,17 +46,27 @@ def train_xgb_metadata(
     return xgb_clf
 
 
+import numpy as np
+from sklearn.metrics import classification_report, confusion_matrix
+
 def evaluate_xgb_metadata(model, X_test, y_test, label_encoder):
-    """
-    In classification report + confusion matrix cho XGBoost metadata.
-    """
     y_pred = model.predict(X_test)
-    class_names = label_encoder.classes_
+
+    # Lấy đúng các label thực sự xuất hiện trong y_test hoặc y_pred
+    labels = np.unique(np.concatenate([y_test, y_pred]))
+    class_names = label_encoder.inverse_transform(labels)
 
     print("\n=== XGBoost (metadata) classification report ===")
-    print(classification_report(y_test, y_pred, target_names=class_names))
+    print(
+        classification_report(
+            y_test,
+            y_pred,
+            labels=labels,
+            target_names=class_names,
+        )
+    )
 
-    cm = confusion_matrix(y_test, y_pred)
+    cm = confusion_matrix(y_test, y_pred, labels=labels)
     print("XGBoost confusion matrix:")
     print(cm)
 
